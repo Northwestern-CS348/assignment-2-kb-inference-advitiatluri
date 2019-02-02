@@ -116,6 +116,45 @@ class KnowledgeBase(object):
             print("Invalid ask:", fact.statement)
             return []
 
+    def retract_helper(self, fact_or_rule):
+        if isinstance(fact_or_rule, Fact):
+            if not fact_or_rule.supported_by:
+                for fact in fact_or_rule.supports_facts:
+                    for pair in fact.supported_by:
+                        if pair[0] == fact_or_rule:
+                            fact.supported_by.remove(pair)
+                    if not fact.supported_by:
+                        self.retract_helper(fact)
+                for rule in fact_or_rule.supports_rules:
+                    for pair in rule.supported_by:
+                        if pair[0] == fact_or_rule:
+                            rule.supported_by.remove(pair)
+                    if not rule.supported_by:
+                        self.retract_helper(rule)
+                self.facts.remove(fact_or_rule)
+            else:
+                fact_or_rule.asserted = False
+        elif isinstance(fact_or_rule, Rule):
+            if fact_or_rule.asserted:
+                return
+            if not fact_or_rule.supported_by:
+                for fact in fact_or_rule.supports_facts:
+                    for pair in fact.supported_by:
+                        if pair[0] == fact_or_rule:
+                            fact.supported_by.remove(pair)
+                    if not fact.supported_by:
+                        self.retract_helper(fact)
+                for rule in fact_or_rule.supports_rules:
+                    for pair in rule.supported_by:
+                        if pair[0] == fact_or_rule:
+                            rule.supported_by.remove(pair)
+                    if not rule.supported_by:
+                        self.retract_helper(rule)
+                self.rules.remove(fact_or_rule)
+            else:
+                fact_or_rule.asserted = False
+
+
     def kb_retract(self, fact_or_rule):
         """Retract a fact from the KB
 
@@ -128,7 +167,10 @@ class KnowledgeBase(object):
         printv("Retracting {!r}", 0, verbose, [fact_or_rule])
         ####################################################
         # Student code goes here
-        
+        if isinstance(fact_or_rule, Fact):
+            for f in self.facts:
+                if f.statement == fact_or_rule.statement:
+                    self.retract_helper(f)
 
 class InferenceEngine(object):
     def fc_infer(self, fact, rule, kb):
@@ -146,3 +188,22 @@ class InferenceEngine(object):
             [fact.statement, rule.lhs, rule.rhs])
         ####################################################
         # Student code goes here
+        bindings = match(fact.statement, rule.lhs[0])
+        fact_rule_pair = [fact, rule]
+        if bindings:
+            statement = instantiate(rule.rhs, bindings)
+            if len(rule.lhs) == 1:
+                new_fact = Fact(statement, supported_by=[fact_rule_pair])
+                rule.supports_facts.append(new_fact)
+                fact.supports_facts.append(new_fact)
+                kb.kb_add(new_fact)
+            else:
+                remaining_rules = []
+                lhs_minus_first = rule.lhs[1:]
+                for r in lhs_minus_first:
+                    new_statement = instantiate(r, bindings)
+                    remaining_rules.append(new_statement)
+                new_rule = Rule([remaining_rules, statement], supported_by=[fact_rule_pair])
+                rule.supports_rules.append(new_rule)
+                fact.supports_rules.append(new_rule)
+                kb.kb_add(new_rule)
