@@ -140,13 +140,13 @@ class KnowledgeBase(object):
             if not fact_or_rule.supported_by:
                 for fact in fact_or_rule.supports_facts:
                     for pair in fact.supported_by:
-                        if pair[0] == fact_or_rule:
+                        if pair[1] == fact_or_rule:
                             fact.supported_by.remove(pair)
                     if not fact.supported_by:
                         self.retract_helper(fact)
                 for rule in fact_or_rule.supports_rules:
                     for pair in rule.supported_by:
-                        if pair[0] == fact_or_rule:
+                        if pair[1] == fact_or_rule:
                             rule.supported_by.remove(pair)
                     if not rule.supported_by:
                         self.retract_helper(rule)
